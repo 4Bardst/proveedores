@@ -66,13 +66,13 @@
     <footer class="bg-white mt-12 py-6">
         <div class="container mx-auto px-6 text-center text-gray-500">
             <p>&copy; 2025 MCA | Creado con ❤️ para nuestra comunidad.</p>
-            <a href="URL_DE_TU_FORMULARIO_DE_REGISTRO" target="_blank" class="inline-block mt-4 px-6 py-2 bg-teal-600 text-white font-semibold rounded-md hover:bg-teal-700 transition-colors">Registra tu negocio aquí</a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0VcpyBe3WnIw0NqQya8MzFldco9crDaffTcgpfDNfvUj3lg/viewform?usp=header" target="_blank" class="inline-block mt-4 px-6 py-2 bg-teal-600 text-white font-semibold rounded-md hover:bg-teal-700 transition-colors">Registra tu negocio aquí</a>
         </div>
     </footer>
 
     <script>
         // --- CONFIGURACIÓN ---
-        // ✅ ¡LISTO! Enlace a tu Google Sheet configurado.
+        // ✅ Enlace a tu Google Sheet configurado.
         const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScNOmQpXAX-qrXge2DztDAAP2G8m-7ot7q362Z8rHTTa5oj0RHKxqcMMWWYutSc9L7jLncLW4IPzIr/pub?gid=678724048&single=true&output=csv';
 
         // --- LÓGICA DE LA APLICACIÓN ---
@@ -85,7 +85,6 @@
 
             let allBusinesses = []; // Almacenará todos los negocios
 
-            // Función para obtener y procesar los datos
             async function fetchData() {
                 try {
                     const response = await fetch(GOOGLE_SHEET_URL);
@@ -104,11 +103,10 @@
                 }
             }
 
-            // Función para convertir el texto CSV a un array de objetos
             function parseCSV(text) {
                 const lines = text.trim().split('\n');
                 const headers = lines[0].split(',').map(h => h.trim());
-                // Asegúrate de que los nombres de las columnas coincidan EXACTAMENTE con tu formulario
+                
                 const nameIndex = headers.indexOf('Nombre del Negocio');
                 const categoryIndex = headers.indexOf('Categoría');
                 const descriptionIndex = headers.indexOf('Descripción Corta (máx 150 caracteres)');
@@ -120,7 +118,6 @@
                 const businesses = [];
                 for (let i = 1; i < lines.length; i++) {
                     const data = lines[i].split(',');
-                    // Solo procesamos los que tienen 'SI' en la columna Aprobado
                     if (data[approvedIndex] && data[approvedIndex].trim().toLowerCase() === 'si') {
                         businesses.push({
                             name: data[nameIndex] ? data[nameIndex].trim() : 'Sin Nombre',
@@ -135,7 +132,6 @@
                 return businesses;
             }
             
-            // Función para mostrar las tarjetas de los negocios
             function displayBusinesses(businesses) {
                 cardContainer.innerHTML = '';
                 if (businesses.length === 0) {
@@ -145,7 +141,7 @@
                 }
                 
                 businesses.forEach(business => {
-                    const whatsappNumber = business.whatsapp.replace(/\D/g, ''); // Limpia el número
+                    const whatsappNumber = business.whatsapp.replace(/\D/g, '');
                     const whatsappLink = `https://wa.me/${whatsappNumber}`;
 
                     const card = `
@@ -166,6 +162,37 @@
                 });
             }
 
-            // Función para poblar el filtro de categorías
             function populateCategories(businesses) {
-                const
+                const categories = [...new Set(businesses.map(b => b.category))];
+                categories.sort().forEach(category => {
+                    if (category && category !== 'Sin Categoría') {
+                        const option = document.createElement('option');
+                        option.value = category;
+                        option.textContent = category;
+                        categoryFilter.appendChild(option);
+                    }
+                });
+            }
+
+            function filterResults() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const selectedCategory = categoryFilter.value;
+
+                const filtered = allBusinesses.filter(business => {
+                    const matchesSearch = business.name.toLowerCase().includes(searchTerm) || business.description.toLowerCase().includes(searchTerm);
+                    const matchesCategory = selectedCategory === 'all' || business.category === selectedCategory;
+                    return matchesSearch && matchesCategory;
+                });
+
+                displayBusinesses(filtered);
+            }
+
+            searchInput.addEventListener('input', filterResults);
+            categoryFilter.addEventListener('change', filterResults);
+
+            fetchData();
+        });
+    </script>
+
+</body>
+</html>

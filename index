@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proveedores de MCA</title>
+    <meta name="description" content="Directorio de negocios y proveedores locales de MCA que venden a otras ciudades.">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Estilos personalizados para una apariencia más limpia */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-6 py-4">
+            <h1 class="text-3xl font-bold text-gray-800">Directorio de MCA</h1>
+            <p class="text-gray-600 mt-1">Negocios locales listos para vender más allá de nuestras fronteras.</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+
+        <div class="mb-8 p-4 bg-white rounded-lg shadow">
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="text" id="searchInput" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Buscar por nombre o descripción...">
+                <select id="categoryFilter" class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <option value="all">Todas las categorías</option>
+                    </select>
+            </div>
+        </div>
+
+        <div id="loading" class="text-center py-10">
+            <p class="text-gray-500 text-lg">Cargando proveedores...</p>
+        </div>
+        <div id="card-container" class="card-container">
+            </div>
+        <div id="no-results" class="hidden text-center py-10">
+            <p class="text-gray-500 text-lg">No se encontraron resultados para tu búsqueda.</p>
+        </div>
+
+    </main>
+
+    <footer class="bg-white mt-12 py-6">
+        <div class="container mx-auto px-6 text-center text-gray-500">
+            <p>&copy; 2025 MCA | Creado con ❤️ para nuestra comunidad.</p>
+            <a href="URL_DE_TU_FORMULARIO_DE_REGISTRO" target="_blank" class="inline-block mt-4 px-6 py-2 bg-teal-600 text-white font-semibold rounded-md hover:bg-teal-700 transition-colors">Registra tu negocio aquí</a>
+        </div>
+    </footer>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        // ✅ ¡LISTO! Enlace a tu Google Sheet configurado.
+        const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScNOmQpXAX-qrXge2DztDAAP2G8m-7ot7q362Z8rHTTa5oj0RHKxqcMMWWYutSc9L7jLncLW4IPzIr/pub?gid=678724048&single=true&output=csv';
+
+        // --- LÓGICA DE LA APLICACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const cardContainer = document.getElementById('card-container');
+            const loadingIndicator = document.getElementById('loading');
+            const noResultsMessage = document.getElementById('no-results');
+            const searchInput = document.getElementById('searchInput');
+            const categoryFilter = document.getElementById('categoryFilter');
+
+            let allBusinesses = []; // Almacenará todos los negocios
+
+            // Función para obtener y procesar los datos
+            async function fetchData() {
+                try {
+                    const response = await fetch(GOOGLE_SHEET_URL);
+                    if (!response.ok) throw new Error('Error al cargar los datos');
+                    const csvText = await response.text();
+                    
+                    allBusinesses = parseCSV(csvText);
+                    populateCategories(allBusinesses);
+                    displayBusinesses(allBusinesses);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    loadingIndicator.innerHTML = '<p class="text-red-500">Hubo un problema al cargar los datos. Por favor, revisa la URL de la Hoja de Cálculo.</p>';
+                } finally {
+                    loadingIndicator.style.display = 'none';
+                }
+            }
+
+            // Función para convertir el texto CSV a un array de objetos
+            function parseCSV(text) {
+                const lines = text.trim().split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                // Asegúrate de que los nombres de las columnas coincidan EXACTAMENTE con tu formulario
+                const nameIndex = headers.indexOf('Nombre del Negocio');
+                const categoryIndex = headers.indexOf('Categoría');
+                const descriptionIndex = headers.indexOf('Descripción Corta (máx 150 caracteres)');
+                const whatsappIndex = headers.indexOf('Número de WhatsApp (con código de país)');
+                const socialIndex = headers.indexOf('Enlace a Instagram o Facebook (opcional)');
+                const imageIndex = headers.indexOf('Enlace a tu Logo o Foto principal');
+                const approvedIndex = headers.indexOf('Aprobado');
+
+                const businesses = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const data = lines[i].split(',');
+                    // Solo procesamos los que tienen 'SI' en la columna Aprobado
+                    if (data[approvedIndex] && data[approvedIndex].trim().toLowerCase() === 'si') {
+                        businesses.push({
+                            name: data[nameIndex] ? data[nameIndex].trim() : 'Sin Nombre',
+                            category: data[categoryIndex] ? data[categoryIndex].trim() : 'Sin Categoría',
+                            description: data[descriptionIndex] ? data[descriptionIndex].trim() : '',
+                            whatsapp: data[whatsappIndex] ? data[whatsappIndex].trim() : '',
+                            social: data[socialIndex] ? data[socialIndex].trim() : '',
+                            image: data[imageIndex] ? data[imageIndex].trim() : 'https://via.placeholder.com/400x300.png?text=Sin+Imagen'
+                        });
+                    }
+                }
+                return businesses;
+            }
+            
+            // Función para mostrar las tarjetas de los negocios
+            function displayBusinesses(businesses) {
+                cardContainer.innerHTML = '';
+                if (businesses.length === 0) {
+                    noResultsMessage.style.display = 'block';
+                } else {
+                    noResultsMessage.style.display = 'none';
+                }
+                
+                businesses.forEach(business => {
+                    const whatsappNumber = business.whatsapp.replace(/\D/g, ''); // Limpia el número
+                    const whatsappLink = `https://wa.me/${whatsappNumber}`;
+
+                    const card = `
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col fade-in">
+                            <img src="${business.image}" alt="Logo de ${business.name}" class="w-full h-48 object-cover" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x300.png?text=Imagen+no+disponible';">
+                            <div class="p-5 flex flex-col flex-grow">
+                                <span class="text-sm font-semibold text-teal-600">${business.category}</span>
+                                <h3 class="text-xl font-bold text-gray-800 mt-1">${business.name}</h3>
+                                <p class="text-gray-600 mt-2 flex-grow">${business.description}</p>
+                                <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+                                    ${business.whatsapp ? `<a href="${whatsappLink}" target="_blank" class="text-green-500 hover:text-green-600 font-semibold">WhatsApp</a>` : ''}
+                                    ${business.social ? `<a href="${business.social}" target="_blank" class="text-blue-500 hover:text-blue-600 font-semibold">Red Social</a>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    cardContainer.innerHTML += card;
+                });
+            }
+
+            // Función para poblar el filtro de categorías
+            function populateCategories(businesses) {
+                const

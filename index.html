@@ -7,20 +7,18 @@
     <meta name="description" content="Directorio de negocios y proveedores locales de MCA que venden a otras ciudades.">
     
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* Estilos personalizados para una apariencia más limpia */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            background-color: #f3f4f6; /* Un gris un poco más suave */
         }
         .card-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 1.5rem;
         }
         .fade-in {
@@ -42,25 +40,18 @@
     </header>
 
     <main class="container mx-auto px-6 py-8">
-
         <div class="mb-8 p-4 bg-white rounded-lg shadow">
             <div class="flex flex-col md:flex-row gap-4">
                 <input type="text" id="searchInput" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Buscar por nombre o descripción...">
                 <select id="categoryFilter" class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
                     <option value="all">Todas las categorías</option>
-                    </select>
+                </select>
             </div>
         </div>
 
-        <div id="loading" class="text-center py-10">
-            <p class="text-gray-500 text-lg">Cargando proveedores...</p>
-        </div>
-        <div id="card-container" class="card-container">
-            </div>
-        <div id="no-results" class="hidden text-center py-10">
-            <p class="text-gray-500 text-lg">No se encontraron resultados para tu búsqueda.</p>
-        </div>
-
+        <div id="loading" class="text-center py-10"><p class="text-gray-500 text-lg">Cargando proveedores...</p></div>
+        <div id="card-container" class="card-container"></div>
+        <div id="no-results" class="hidden text-center py-10"><p class="text-gray-500 text-lg">No se encontraron resultados.</p></div>
     </main>
 
     <footer class="bg-white mt-12 py-6">
@@ -71,11 +62,8 @@
     </footer>
 
     <script>
-        // --- CONFIGURACIÓN ---
-        // ✅ Enlace a tu Google Sheet configurado.
         const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScNOmQpXAX-qrXge2DztDAAP2G8m-7ot7q362Z8rHTTa5oj0RHKxqcMMWWYutSc9L7jLncLW4IPzIr/pub?gid=678724048&single=true&output=csv';
 
-        // --- LÓGICA DE LA APLICACIÓN ---
         document.addEventListener('DOMContentLoaded', () => {
             const cardContainer = document.getElementById('card-container');
             const loadingIndicator = document.getElementById('loading');
@@ -83,21 +71,19 @@
             const searchInput = document.getElementById('searchInput');
             const categoryFilter = document.getElementById('categoryFilter');
 
-            let allBusinesses = []; // Almacenará todos los negocios
+            let allBusinesses = [];
 
             async function fetchData() {
                 try {
                     const response = await fetch(GOOGLE_SHEET_URL);
-                    if (!response.ok) throw new Error('Error al cargar los datos');
+                    if (!response.ok) throw new Error('Error al cargar datos');
                     const csvText = await response.text();
-                    
                     allBusinesses = parseCSV(csvText);
                     populateCategories(allBusinesses);
                     displayBusinesses(allBusinesses);
-
                 } catch (error) {
                     console.error('Error:', error);
-                    loadingIndicator.innerHTML = '<p class="text-red-500">Hubo un problema al cargar los datos. Por favor, revisa la URL de la Hoja de Cálculo.</p>';
+                    loadingIndicator.innerHTML = '<p class="text-red-500">Hubo un problema al cargar los datos.</p>';
                 } finally {
                     loadingIndicator.style.display = 'none';
                 }
@@ -106,13 +92,13 @@
             function parseCSV(text) {
                 const lines = text.trim().split('\n');
                 const headers = lines[0].split(',').map(h => h.trim());
-                
+                // Mantenemos los encabezados largos que te están funcionando
                 const nameIndex = headers.indexOf('Nombre del Negocio');
                 const categoryIndex = headers.indexOf('Categoría');
-                const descriptionIndex = headers.indexOf('Descripción Corta (máx 150 caracteres)');
-                const whatsappIndex = headers.indexOf('Número de WhatsApp (con código de país)');
-                const socialIndex = headers.indexOf('Enlace a Instagram o Facebook (opcional)');
-                const imageIndex = headers.indexOf('Enlace a tu Logo o Foto principal');
+                const descriptionIndex = headers.indexOf('Descripción Corta');
+                const whatsappIndex = headers.indexOf('Número de WhatsApp');
+                const socialIndex = headers.indexOf('Enlace a Red Social (Opcional)');
+                const imageIndex = headers.indexOf('Enlace de Imagen (Logo o Foto)');
                 const approvedIndex = headers.indexOf('Aprobado');
 
                 const businesses = [];
@@ -125,36 +111,64 @@
                             description: data[descriptionIndex] ? data[descriptionIndex].trim() : '',
                             whatsapp: data[whatsappIndex] ? data[whatsappIndex].trim() : '',
                             social: data[socialIndex] ? data[socialIndex].trim() : '',
-                            image: data[imageIndex] ? data[imageIndex].trim() : 'https://via.placeholder.com/400x300.png?text=Sin+Imagen'
+                            image: data[imageIndex] ? data[imageIndex].trim() : ''
                         });
                     }
                 }
                 return businesses;
             }
-            
+
+            // --- ✨ NUEVA FUNCIÓN PARA CREAR EL AVATAR CON INICIALES ---
+            function createPlaceholder(name) {
+                const initials = name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
+                // Genera un color basado en el nombre para que sea consistente
+                let hash = 0;
+                for (let i = 0; i < name.length; i++) {
+                    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const h = hash % 360;
+                const bgColor = `hsl(${h}, 35%, 85%)`;
+                const textColor = `hsl(${h}, 35%, 35%)`;
+                
+                return `<div class="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center" style="background-color: ${bgColor};">
+                            <span class="text-2xl font-bold" style="color: ${textColor};">${initials}</span>
+                        </div>`;
+            }
+
+            // --- ✨ FUNCIÓN DE VISUALIZACIÓN MODIFICADA ---
             function displayBusinesses(businesses) {
                 cardContainer.innerHTML = '';
-                if (businesses.length === 0) {
-                    noResultsMessage.style.display = 'block';
-                } else {
-                    noResultsMessage.style.display = 'none';
-                }
+                noResultsMessage.style.display = businesses.length === 0 ? 'block' : 'none';
                 
                 businesses.forEach(business => {
                     const whatsappNumber = business.whatsapp.replace(/\D/g, '');
                     const whatsappLink = `https://wa.me/${whatsappNumber}`;
 
+                    // Decide si usar la imagen o el placeholder de iniciales
+                    const imageOrPlaceholder = business.image 
+                        ? `<img src="${business.image}" alt="Logo de ${business.name}" class="w-16 h-16 rounded-full object-cover flex-shrink-0">`
+                        : createPlaceholder(business.name);
+
                     const card = `
-                        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col fade-in">
-                            <img src="${business.image}" alt="Logo de ${business.name}" class="w-full h-48 object-cover" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x300.png?text=Imagen+no+disponible';">
-                            <div class="p-5 flex flex-col flex-grow">
-                                <span class="text-sm font-semibold text-teal-600">${business.category}</span>
-                                <h3 class="text-xl font-bold text-gray-800 mt-1">${business.name}</h3>
-                                <p class="text-gray-600 mt-2 flex-grow">${business.description}</p>
-                                <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
-                                    ${business.whatsapp ? `<a href="${whatsappLink}" target="_blank" class="text-green-500 hover:text-green-600 font-semibold">WhatsApp</a>` : ''}
-                                    ${business.social ? `<a href="${business.social}" target="_blank" class="text-blue-500 hover:text-blue-600 font-semibold">Red Social</a>` : ''}
+                        <div class="bg-white rounded-lg shadow-md p-5 flex flex-col fade-in transition-all hover:shadow-lg hover:scale-[1.02]">
+                            <div class="flex items-center gap-4">
+                                ${imageOrPlaceholder}
+                                <div class="flex-grow">
+                                    <span class="text-xs font-semibold text-teal-600 bg-teal-100 px-2 py-1 rounded-full">${business.category}</span>
+                                    <h3 class="text-lg font-bold text-gray-800 mt-1">${business.name}</h3>
                                 </div>
+                            </div>
+                            <p class="text-gray-600 mt-4 text-sm flex-grow">${business.description}</p>
+                            <div class="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end gap-3">
+                                ${business.social ? `
+                                    <a href="${business.social}" target="_blank" class="text-gray-400 hover:text-blue-500" title="Red Social">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                                    </a>` : ''}
+                                ${business.whatsapp ? `
+                                    <a href="${whatsappLink}" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold text-sm rounded-lg hover:bg-green-600 transition-colors" title="Contactar por WhatsApp">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                                        WhatsApp
+                                    </a>` : ''}
                             </div>
                         </div>
                     `;
@@ -177,13 +191,10 @@
             function filterResults() {
                 const searchTerm = searchInput.value.toLowerCase();
                 const selectedCategory = categoryFilter.value;
-
-                const filtered = allBusinesses.filter(business => {
-                    const matchesSearch = business.name.toLowerCase().includes(searchTerm) || business.description.toLowerCase().includes(searchTerm);
-                    const matchesCategory = selectedCategory === 'all' || business.category === selectedCategory;
-                    return matchesSearch && matchesCategory;
-                });
-
+                const filtered = allBusinesses.filter(b => 
+                    (b.name.toLowerCase().includes(searchTerm) || b.description.toLowerCase().includes(searchTerm)) &&
+                    (selectedCategory === 'all' || b.category === selectedCategory)
+                );
                 displayBusinesses(filtered);
             }
 
